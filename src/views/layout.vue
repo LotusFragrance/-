@@ -60,6 +60,7 @@
 </template>
 
 <script>
+import { blockMod, color } from '@/utils/data'
 export default {
   data () {
     return {
@@ -67,7 +68,12 @@ export default {
       col: 10,
       frame: [], // 主屏幕
       subscreen: [], // 副屏幕
-      bg: '#142957'
+      bg: '#142957',
+      block: [], // 方块集和
+      now: { b: 0, c: 0 }, // 当前方块以及旋转角度
+      next: { b: 0, c: 0 }, // 下一个方块以及旋转角度
+      nowBlock: {}, // 当前方块的形状数据
+      nextBlock: {} // 下一个方块的形状数据
     }
   },
   methods: {
@@ -95,10 +101,51 @@ export default {
         }
         this.subscreen.push(a)
       }
+    },
+    // 渲染方块
+    getBlock (index) {
+      this.block = blockMod(color[index])
+    },
+    // 渲染下一个形状
+    async getNext () {
+      // 随机形状
+      this.next.b = Math.floor(Math.random() * this.block.length)
+    },
+    // 渲染当前的形状（当前形状和下一个形状相同）
+    init () {
+      // 获取到下一个形状数据
+      this.now = JSON.parse(JSON.stringify(this.next))
+      // 当前的形状数据
+      this.nowBlock = JSON.parse(JSON.stringify(this.block[this.now.b]))
+      this.renderBlock(this.nowBlock, this.frame, 1)
+      this.getNext().then(() => {
+        this.nextBlock = JSON.parse(JSON.stringify(this.block[this.next.b]))
+        this.renderBlock(this.nextBlock, this.subscreen, 1)
+      })
+    },
+    // 渲染形状 b是方块 d是位置  n：0 是擦除 1是生成 2确定落到最下层
+    renderBlock (b, d, n) {
+      const c = b.site
+      if (n === 0) {
+        for (let i = 0; i < c.length; i += 2) {
+          d[c[i]][c[i + 1]].bg = this.bg
+        }
+      } else if (n === 1) {
+        for (let i = 0; i < c.length; i += 2) {
+          d[c[i]][c[i + 1]].bg = b.color
+        }
+      } else if (n === 2) {
+        for (let i = 0; i < c.length; i += 2) {
+          d[c[i]][c[i + 1]].data = 1
+        }
+      }
     }
   },
   mounted () {
     this.gameFrame()
+    this.getBlock(0)
+    this.getNext()
+    this.init()
   }
 }
 </script>
