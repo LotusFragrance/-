@@ -1,0 +1,9 @@
+body {
+  height: 100vh;
+  background: url(../assets/bg.jpg) no-repeat 0 0 / cover;
+}
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
