@@ -60,7 +60,7 @@
 </template>
 
 <script>
-import { blockMod, color } from '@/utils/data'
+import { blockMod, color, transition } from '@/utils/data'
 export default {
   data () {
     return {
@@ -102,7 +102,7 @@ export default {
         this.subscreen.push(a)
       }
     },
-    // 渲染方块
+    // 获取渲染方块
     getBlock (index) {
       this.block = blockMod(color[index])
     },
@@ -110,6 +110,8 @@ export default {
     async getNext () {
       // 随机形状
       this.next.b = Math.floor(Math.random() * this.block.length)
+      // 获取旋转方式
+      this.next.c = Math.floor(Math.random() * 4)
     },
     // 渲染当前的形状（当前形状和下一个形状相同）
     init () {
@@ -118,9 +120,21 @@ export default {
       // 当前的形状数据
       this.nowBlock = JSON.parse(JSON.stringify(this.block[this.now.b]))
       this.renderBlock(this.nowBlock, this.frame, 1)
+      // 旋转
+      if (this.now.c > 0) {
+        for (let i = 0; i < this.now.c; i++) {
+          this.change(this.nowBlock, this.frame, this.now, i)
+        }
+      }
       this.getNext().then(() => {
         this.nextBlock = JSON.parse(JSON.stringify(this.block[this.next.b]))
         this.renderBlock(this.nextBlock, this.subscreen, 1)
+        // 旋转
+        if (this.next.c > 0) {
+          for (let i = 0; i < this.next.c; i++) {
+            this.change(this.nextBlock, this.subscreen, this.next, i)
+          }
+        }
       })
     },
     // 渲染形状 b是方块 d是位置  n：0 是擦除 1是生成 2确定落到最下层
@@ -139,6 +153,24 @@ export default {
           d[c[i]][c[i + 1]].data = 1
         }
       }
+    },
+    // b: 当前方块，d: 要渲染的位置，z：渲染的对象现在还是下一个，xz:当前旋转角度
+    change (b, d, z, xz) {
+      // 先清空
+      this.renderBlock(b, d, 0)
+      // 记录方块第一块的位置
+      const x = b.site[0]
+      const y = b.site[1]
+      for (let i = 0; i < b.site.length; i += 2) {
+        const a = b.site[i]
+        b.site[i] = b.site[i + 1] - y + x + transition[z.b][xz].x
+        b.site[i + 1] = -(a - x) + y + transition[z.b][xz].y
+      }
+      xz++
+      if (xz === 4) {
+        xz = 0
+      }
+      this.renderBlock(b, d, 1)
     }
   },
   mounted () {
