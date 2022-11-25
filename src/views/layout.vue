@@ -50,10 +50,10 @@
     <!-- 操作区域 -->
     <div class="operation-area">
       <div class="control">
-        <button>变化</button>
-        <button>向下</button>
-        <button>向左</button>
-        <button>向右</button>
+        <button @click="change1">变化</button>
+        <button @click="moveDown">向下</button>
+        <button @click="moveLeft">向左</button>
+        <button @click="moveRight">向右</button>
       </div>
     </div>
   </div>
@@ -73,7 +73,8 @@ export default {
       now: { b: 0, c: 0 }, // 当前方块以及旋转角度
       next: { b: 0, c: 0 }, // 下一个方块以及旋转角度
       nowBlock: {}, // 当前方块的形状数据
-      nextBlock: {} // 下一个方块的形状数据
+      nextBlock: {}, // 下一个方块的形状数据
+      xz: 0 // 旋转的角度
     }
   },
   methods: {
@@ -117,6 +118,7 @@ export default {
     init () {
       // 获取到下一个形状数据
       this.now = JSON.parse(JSON.stringify(this.next))
+      this.xz = this.now.c
       // 当前的形状数据
       this.nowBlock = JSON.parse(JSON.stringify(this.block[this.now.b]))
       this.renderBlock(this.nowBlock, this.frame, 1)
@@ -171,6 +173,88 @@ export default {
         xz = 0
       }
       this.renderBlock(b, d, 1)
+    },
+    // 下落后的旋转
+    change1 () {
+      this.renderBlock(this.nowBlock, this.frame, 0)
+      const b = JSON.parse(JSON.stringify(this.nowBlock))
+      // 记录方块第一块的位置
+      const x = b.site[0]
+      const y = b.site[1]
+      for (let i = 0; i < b.site.length; i += 2) {
+        const a = b.site[i]
+        b.site[i] = b.site[i + 1] - y + x + transition[this.now.b][this.xz].x
+        b.site[i + 1] = -(a - x) + y + transition[this.now.b][this.xz].y
+      }
+      this.xz++
+      if (this.xz === 4) {
+        this.xz = 0
+      }
+      this.nowBlock = b
+      this.renderBlock(this.nowBlock, this.frame, 1)
+    },
+    // 向下移动
+    moveDown () {
+      if (!this.isMove(3)) return
+      // 先清理在渲染形状数据
+      this.renderBlock(this.nowBlock, this.frame, 0)
+      for (let i = 0; i < this.nowBlock.site.length; i += 2) {
+        // 向下移动一位
+        this.nowBlock.site[i]++
+      }
+      this.renderBlock(this.nowBlock, this.frame, 1)
+    },
+    // 向左移动
+    moveLeft () {
+      if (!this.isMove(2)) return
+      // 先清理在渲染形状数据
+      this.renderBlock(this.nowBlock, this.frame, 0)
+      for (let i = 0; i < this.nowBlock.site.length; i += 2) {
+        // 向下移动一位
+        this.nowBlock.site[i + 1]--
+      }
+      this.renderBlock(this.nowBlock, this.frame, 1)
+    },
+    // 向右移动
+    moveRight () {
+      if (!this.isMove(1)) return
+      // 先清理在渲染形状数据
+      this.renderBlock(this.nowBlock, this.frame, 0)
+      for (let i = 0; i < this.nowBlock.site.length; i += 2) {
+        // 向下移动一位
+        this.nowBlock.site[i + 1]++
+      }
+      this.renderBlock(this.nowBlock, this.frame, 1)
+    },
+    // 判断是否可以移动
+    // 参数e  1: 右移 2：左移 3： 下移 4： 变化
+    isMove (e) {
+      // 获取坐标
+      const c = this.nowBlock.site
+      switch (e) {
+        case 1:
+          for (let i = 0; i < this.nowBlock.site.length; i += 2) {
+            if (c[i + 1] >= this.col - 1) {
+              return false
+            }
+          }
+          break
+        case 2:
+          for (let i = 0; i < this.nowBlock.site.length; i += 2) {
+            if (c[i + 1] <= 0) {
+              return false
+            }
+          }
+          break
+        case 3:
+          for (let i = 0; i < this.nowBlock.site.length; i += 2) {
+            if (c[i] >= this.row - 1) {
+              return false
+            }
+          }
+          break
+      }
+      return true
     }
   },
   mounted () {
