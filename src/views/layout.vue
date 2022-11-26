@@ -31,19 +31,23 @@
         </div>
         <div class="item">
           <span>得分</span>
-          <div class="box">0</div>
+          <div class="box">{{ score }}</div>
         </div>
         <div class="item">
           <span>等级</span>
-          <div class="box">1</div>
+          <div class="box grade">
+            <button @click="downFn">-</button>
+            {{grade}}
+            <button @click="upFn">+</button>
+          </div>
         </div>
         <div class="item">
           <span>消除</span>
-          <div class="box">0</div>
+          <div class="box">{{removeRow}}</div>
         </div>
         <div class="switch">
-          <button>暂停</button>
-          <button>开始</button>
+          <button @click="stopGame">暂停</button>
+          <button @click="startGame">开始</button>
         </div>
       </div>
     </div>
@@ -74,7 +78,12 @@ export default {
       next: { b: 0, c: 0 }, // 下一个方块以及旋转角度
       nowBlock: {}, // 当前方块的形状数据
       nextBlock: {}, // 下一个方块的形状数据
-      xz: 0 // 旋转的角度
+      xz: 0, // 旋转的角度
+      timer: null, // 自动向下
+      removeRow: 0, // 等级
+      score: 0,
+      removeAllBlock: [],
+      grade: 1
     }
   },
   methods: {
@@ -102,8 +111,9 @@ export default {
         }
         this.subscreen.push(a)
       }
-      this.frame[4][4].bg = 'skyblue'
-      this.frame[4][4].data = 1
+      // 模拟格子被占用
+      // this.frame[4][4].bg = 'skyblue'
+      // this.frame[4][4].data = 1
     },
     // 获取渲染方块
     getBlock (index) {
@@ -131,6 +141,8 @@ export default {
         }
       }
       this.getNext().then(() => {
+        // 先擦除后渲染
+        this.renderBlock(this.nowBlock, this.subscreen, 0)
         this.nextBlock = JSON.parse(JSON.stringify(this.block[this.next.b]))
         this.renderBlock(this.nextBlock, this.subscreen, 1)
         // 旋转
@@ -211,14 +223,34 @@ export default {
     },
     // 向下移动
     moveDown () {
-      if (!this.isMove(3)) return
-      // 先清理在渲染形状数据
-      this.renderBlock(this.nowBlock, this.frame, 0)
-      for (let i = 0; i < this.nowBlock.site.length; i += 2) {
-        // 向下移动一位
-        this.nowBlock.site[i]++
+      if (this.isMove(3)) {
+        // 先清理在渲染形状数据
+        this.renderBlock(this.nowBlock, this.frame, 0)
+        for (let i = 0; i < this.nowBlock.site.length; i += 2) {
+          // 向下移动一位
+          this.nowBlock.site[i]++
+        }
+        this.renderBlock(this.nowBlock, this.frame, 1)
+      } else {
+        // 已经不能下落了
+        this.renderBlock(this.nowBlock, this.frame, 2)
+        this.isRemove()
+        // 生成下一个
+        this.init()
       }
-      this.renderBlock(this.nowBlock, this.frame, 1)
+    },
+    // 自动向下移动
+    autMoveDown () {
+      const speed = {
+        1: 1000,
+        2: 500,
+        3: 300,
+        4: 200,
+        5: 100
+      }
+      this.timer = setInterval(() => {
+        this.moveDown()
+      }, speed[this.grade])
     },
     // 向左移动
     moveLeft () {
@@ -285,6 +317,58 @@ export default {
           break
       }
       return true
+    },
+    // 开始游戏
+    startGame () {
+      this.autMoveDown()
+    },
+    // 暂停游戏
+    stopGame () {
+      clearInterval(this.timer)
+    },
+    // 判断是否可以消除
+    isRemove () {
+      for (let i = 0; i < this.row; i++) {
+        let sum = 0
+        for (let j = 0; j < this.col; j++) {
+          sum += this.frame[i][j].data
+        }
+        if (sum === this.col) {
+          // 获取可以消除的行
+          this.removeAllBlock.push(i)
+        }
+      }
+      // 判断是否可以消除行
+      if (this.removeAllBlock.length > 0) {
+        const arr = JSON.parse(JSON.stringify(this.removeAllBlock))
+        this.removeAllBlock = []
+        for (let i = 0; i < arr.length; i++) {
+          let j = 0
+          // 让消除方块依次消除（200毫秒）
+          const timer = setInterval(() => {
+            this.frame[arr[i]][j] = {
+              data: 0,
+              bg: this.bg
+            }
+            j++
+            if (j === this.col) {
+              clearInterval(timer)
+              if (i === arr.length - 1) {
+                this.score += 100 * arr.length
+                this.removeRow += arr.length
+              }
+            }
+          }, 50)
+        }
+      }
+    },
+    downFn () {
+      if (this.grade === 1) return false
+      this.grade -= 1
+    },
+    upFn () {
+      if (this.grade === 5) return false
+      this.grade += 1
     }
   },
   mounted () {
@@ -302,6 +386,15 @@ export default {
   flex-direction: column;
   height: 100vh;
   border: 8px solid skyblue;
+  .grade {
+    button {
+      width: 27px;
+      font-size: 16px;
+      border-radius: 5px;
+      background-color: #9d977e7a;
+      color: rgba(238, 238, 238, 0.822);
+    }
+  }
   .game-screen {
     padding: 10px;
     display: flex;
