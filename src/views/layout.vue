@@ -102,6 +102,8 @@ export default {
         }
         this.subscreen.push(a)
       }
+      this.frame[4][4].bg = 'skyblue'
+      this.frame[4][4].data = 1
     },
     // 获取渲染方块
     getBlock (index) {
@@ -176,22 +178,36 @@ export default {
     },
     // 下落后的旋转
     change1 () {
-      this.renderBlock(this.nowBlock, this.frame, 0)
       const b = JSON.parse(JSON.stringify(this.nowBlock))
       // 记录方块第一块的位置
       const x = b.site[0]
       const y = b.site[1]
+      let n = true
       for (let i = 0; i < b.site.length; i += 2) {
         const a = b.site[i]
         b.site[i] = b.site[i + 1] - y + x + transition[this.now.b][this.xz].x
         b.site[i + 1] = -(a - x) + y + transition[this.now.b][this.xz].y
+
+        // 判断旋转后该点是否合理
+        if (
+          b.site[i + 1] < 0 ||
+          b.site[i + 1] > this.col - 1 ||
+          b.site[i] > this.row - 1 ||
+          this.frame[b.site[i]][b.site[i + 1]].data === 1
+        ) {
+          n = false
+        }
       }
-      this.xz++
-      if (this.xz === 4) {
-        this.xz = 0
+      // 符合条件
+      if (n) {
+        this.renderBlock(this.nowBlock, this.frame, 0)
+        this.xz++
+        if (this.xz === 4) {
+          this.xz = 0
+        }
+        this.nowBlock = b
+        this.renderBlock(this.nowBlock, this.frame, 1)
       }
-      this.nowBlock = b
-      this.renderBlock(this.nowBlock, this.frame, 1)
     },
     // 向下移动
     moveDown () {
@@ -229,6 +245,7 @@ export default {
     // 判断是否可以移动
     // 参数e  1: 右移 2：左移 3： 下移 4： 变化
     isMove (e) {
+      let d = 0
       // 获取坐标
       const c = this.nowBlock.site
       switch (e) {
@@ -237,6 +254,10 @@ export default {
             if (c[i + 1] >= this.col - 1) {
               return false
             }
+            d += this.frame[c[i]][c[i + 1] + 1].data
+          }
+          if (d > 0) {
+            return false
           }
           break
         case 2:
@@ -244,6 +265,10 @@ export default {
             if (c[i + 1] <= 0) {
               return false
             }
+            d += this.frame[c[i]][c[i + 1] - 1].data
+          }
+          if (d > 0) {
+            return false
           }
           break
         case 3:
@@ -251,6 +276,11 @@ export default {
             if (c[i] >= this.row - 1) {
               return false
             }
+            // 判断下一个位置是否被占用
+            d += this.frame[c[i] + 1][c[i + 1]].data
+          }
+          if (d > 0) {
+            return false
           }
           break
       }
