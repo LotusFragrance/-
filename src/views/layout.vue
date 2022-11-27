@@ -59,6 +59,9 @@
         <button @click="moveLeft">向左</button>
         <button @click="moveRight">向右</button>
       </div>
+      <div class="fix">
+        创作者:LotusFragrance
+      </div>
     </div>
   </div>
 </template>
@@ -235,8 +238,6 @@ export default {
         // 已经不能下落了
         this.renderBlock(this.nowBlock, this.frame, 2)
         this.isRemove()
-        // 生成下一个
-        this.init()
       }
     },
     // 自动向下移动
@@ -320,6 +321,7 @@ export default {
     },
     // 开始游戏
     startGame () {
+      clearInterval(this.timer)
       this.autMoveDown()
     },
     // 暂停游戏
@@ -342,24 +344,78 @@ export default {
       if (this.removeAllBlock.length > 0) {
         const arr = JSON.parse(JSON.stringify(this.removeAllBlock))
         this.removeAllBlock = []
-        for (let i = 0; i < arr.length; i++) {
-          let j = 0
-          // 让消除方块依次消除（200毫秒）
-          const timer = setInterval(() => {
-            this.frame[arr[i]][j] = {
-              data: 0,
-              bg: this.bg
-            }
-            j++
-            if (j === this.col) {
-              clearInterval(timer)
-              if (i === arr.length - 1) {
-                this.score += 100 * arr.length
-                this.removeRow += arr.length
+        const p = new Promise((resolve, reject) => {
+          for (let i = 0; i < arr.length; i++) {
+            let j = 0
+            // 让消除方块依次消除（200毫秒）
+            const timer = setInterval(() => {
+              this.frame[arr[i]][j] = {
+                data: 0,
+                bg: this.bg
+              }
+              j++
+              if (j === this.col) {
+                clearInterval(timer)
+                if (i === arr.length - 1) {
+                  resolve()
+                }
+              }
+            }, 20)
+          }
+        })
+        p.then(() => {
+          // 得分 一行100, 两行300, 三行：600, 四行900...
+          this.score += 100 * ((arr.length + 1) / 2) * arr.length
+          // 消除行数
+          this.removeRow += arr.length
+          // 消除后方块下移
+          // let newFrame = []
+          // console.log(this.frame)
+          // newFrame = this.frame.filter(item => {
+          //   let isOk = false
+          //   for (let i = 0; i < item.length; i++) {
+          //     if (item[i].data === 1) {
+          //       isOk = true
+          //       continue
+          //     }
+          //   }
+          //   return isOk
+          // })
+          // console.log(newFrame)
+          // if (newFrame.length > 0) {
+          //   // 先清除后渲染
+          //   // this.delete()
+          //   let j = 1
+          //   for (let i = newFrame.length - 1; i >= 0; i--) {
+          //     this.frame[this.row - j] = newFrame[i]
+          //     // this.$set(this.frame, this.row - j, newFrame[i])
+          //     this.delete(newFrame.length)
+          //     j++
+          //   }
+          // }
+          for (let i = this.row - 1; i >= 0; i--) {
+            let a = 0
+            for (let j = 0; j < arr.length; j++) {
+              if (arr[j] > i) {
+                a++
               }
             }
-          }, 50)
-        }
+            if (a > 0) {
+              for (let k = 0; k < this.col; k++) {
+                if (this.frame[i][k].data === 1) {
+                  // 先向下移动
+                  this.frame[i + a][k] = this.frame[i][k]
+                  // 再清楚当前
+                  this.frame[i][k] = { data: 0, bg: this.bg }
+                }
+              }
+            }
+          }
+          // 生成下一个
+          this.init()
+        })
+      } else {
+        this.init()
       }
     },
     downFn () {
@@ -369,6 +425,17 @@ export default {
     upFn () {
       if (this.grade === 5) return false
       this.grade += 1
+    },
+    // 清除所有方块
+    delete (length) {
+      for (let i = 0; i < this.row - length; i++) {
+        for (let j = 0; j < this.col; j++) {
+          this.frame[i][j] = {
+            data: 0,
+            bg: this.bg
+          }
+        }
+      }
     }
   },
   mounted () {
@@ -443,6 +510,7 @@ export default {
     }
   }
   .operation-area {
+    position: relative;
     flex: 1;
     padding: 10px;
     background-color: rgba(255, 255, 255, 0.05);
@@ -480,6 +548,14 @@ export default {
           background-color: #00eff6;
         }
       }
+    }
+    .fix {
+      position: absolute;
+      bottom: 10px;
+      right: 3px;
+      color: #fff;
+      opacity: .5;
+      font-size: 12px;
     }
   }
 }
